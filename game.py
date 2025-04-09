@@ -8,7 +8,7 @@ class Bird:
         self.width = 50
         self.height = 50
         self.gravity = 0.4
-        self.jump_strength = 7
+        self.jump_strength = 6
         self.velocity = 0
 
     def jump(self):
@@ -16,7 +16,9 @@ class Bird:
 
     def update(self):
         self.velocity += self.gravity
+        self.velocity = round(self.velocity, 1)
         self.y += self.velocity
+        self.y = round(self.y, 1)
     
     def getRect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
