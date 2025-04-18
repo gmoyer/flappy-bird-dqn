@@ -3,14 +3,15 @@ import random
 import torch
 
 class Bird:
-    def __init__(self, x, y):
-        self.x = x
+    def __init__(self, y, draw_offset=100):
         self.y = y
         self.width = 50
         self.height = 50
-        self.gravity = 0.4
-        self.jump_strength = 6
+        self.x = self.width / 2
+        self.gravity = 1
+        self.jump_strength = 10
         self.velocity = 0
+        self.draw_offset = draw_offset
 
     def jump(self):
         self.velocity = -self.jump_strength
@@ -25,22 +26,23 @@ class Bird:
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.getRect())
+        pygame.draw.rect(screen, (255, 0, 0), self.getRect().move(self.draw_offset, 0))
     
     def collide(self, pipe):
         return self.getRect().colliderect(pipe.getTopRect()) or self.getRect().colliderect(pipe.getBottomRect())
     
-    def getState(self, offset):
-        return [self.x - offset, self.y, self.velocity]
+    def getState(self):
+        return [self.x, self.y, self.velocity]
 
 class Pipe:
-    def __init__(self, x, height):
+    def __init__(self, x, height, draw_offset=100):
+        self.draw_offset = draw_offset
         self.x = x
         self.width = 80
         self.gap = 150
         self.height = height
         self.y = random.randint(50 + self.gap // 2, height - self.gap // 2 - 50)
-        self.velocity = 3
+        self.velocity = 6
 
     def update(self):
         self.x -= self.velocity
@@ -51,11 +53,11 @@ class Pipe:
         return pygame.Rect(self.x, self.y + self.gap // 2, self.width, self.height - self.y - self.gap // 2)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (0, 255, 0), self.getTopRect())
-        pygame.draw.rect(screen, (0, 255, 0), self.getBottomRect())
+        pygame.draw.rect(screen, (0, 255, 0), self.getTopRect().move(self.draw_offset, 0))
+        pygame.draw.rect(screen, (0, 255, 0), self.getBottomRect().move(self.draw_offset, 0))
 
-    def getState(self, offset):
-        return [self.x - offset, self.x - offset + self.width, self.y, self.getTopRect().height, self.getBottomRect().y]
+    def getState(self):
+        return [self.x, self.x + self.width, self.y, self.getTopRect().height, self.getBottomRect().y]
 
 
 class Environment:
@@ -65,7 +67,7 @@ class Environment:
         self.width = 600
         self.height = 400
         self.pipeSpace = 200
-        self.offset = 100 # Offset for the bird's x position
+        self.draw_offset = 100
 
         if self.renderGame:
             pygame.init()
@@ -77,7 +79,7 @@ class Environment:
         self.reset()
 
     def reset(self):
-        self.bird = Bird(self.offset, 200)
+        self.bird = Bird(50, draw_offset=self.draw_offset)
         self.pipes = []
         self.score = 0
         self.steps = 0
@@ -94,15 +96,15 @@ class Environment:
         self.done = True
 
     def newPipe(self, x):
-        return Pipe(x, self.height)
+        return Pipe(x, self.height, draw_offset=self.draw_offset)
     
     def getState(self):
-        bird_state = self.bird.getState(self.offset)
-        upcoming_pipes = [pipe for pipe in self.pipes if pipe.x + pipe.width > self.offset]
+        bird_state = self.bird.getState()
+        upcoming_pipes = [pipe for pipe in self.pipes if pipe.x + pipe.width > 0]
         pipe = upcoming_pipes[0]
         next_pipe = upcoming_pipes[1]
-        pipe_state = pipe.getState(self.offset)
-        next_pipe_state = next_pipe.getState(self.offset)
+        pipe_state = pipe.getState()
+        next_pipe_state = next_pipe.getState()
         return torch.tensor(bird_state + pipe_state + next_pipe_state, dtype=torch.float32)
     
     def step(self, action):
@@ -119,7 +121,7 @@ class Environment:
 
         for pipe in self.pipes:
             pipe.update()
-            if pipe.x + pipe.width < 0:
+            if pipe.x + pipe.width < -self.draw_offset:
                 self.pipes.remove(pipe)
                 self.score += 1
             if self.bird.collide(pipe):
@@ -147,7 +149,7 @@ class Environment:
         self.screen.blit(score_text, (10, 10))
 
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(30)
     
     def play(self):
         if self.mode != 'human':
@@ -156,6 +158,7 @@ class Environment:
             raise ValueError("Render must be True for play method.")
 
         while not self.done:
+            self.render()
             action = 0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -164,5 +167,4 @@ class Environment:
                     if event.key == pygame.K_SPACE:
                         action = 1
 
-            self.step(action)
-            self.render()
+            state, _, _ = self.step(action)
