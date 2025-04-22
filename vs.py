@@ -3,6 +3,7 @@ from game import Environment
 from dqn import DQN
 import torch
 import pygame
+import random
 
 
 def human_game(env):
@@ -164,9 +165,9 @@ if __name__ == '__main__':
     p1.start()
     p2.start()
 
-
-    parent_conn1.send(20)  # send initial seed to the first window
-    parent_conn2.send(20)  # send initial seed to the second window
+    seed = random.randint(0, 10000)
+    parent_conn1.send(seed)  # send initial seed to the first window
+    parent_conn2.send(seed)  # send initial seed to the second window
 
     try:
         closed1 = False
@@ -180,8 +181,9 @@ if __name__ == '__main__':
                     parent_conn2.send(msg)  # forward to other window
 
                     if msg == 'next':
-                        parent_conn1.send(20)
-                        parent_conn2.send(20)
+                        seed = random.randint(0, 10000)
+                        parent_conn1.send(seed)
+                        parent_conn2.send(seed)
 
             if parent_conn2.poll():
                 msg = parent_conn2.recv()
@@ -191,8 +193,9 @@ if __name__ == '__main__':
                     parent_conn1.send(msg)  # forward to other window
 
                     if msg == 'next':
-                        parent_conn1.send(20)
-                        parent_conn2.send(20)
+                        seed = random.randint(0, 10000)
+                        parent_conn1.send(seed)
+                        parent_conn2.send(seed)
     except KeyboardInterrupt:
         pass
 
