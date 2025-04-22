@@ -1,6 +1,8 @@
 import pygame
 import random
 import torch
+from dqn import DQN, ReplayMemory
+import os
 
 class Bird:
     def __init__(self, y, draw_offset=100):
@@ -68,22 +70,29 @@ class Environment:
         self.height = 400
         self.pipeSpace = 200
         self.draw_offset = 100
+        self.seed = 0
 
         if self.renderGame:
+            if self.mode == 'human':
+                os.environ['SDL_VIDEO_WINDOW_POS'] = '100,200'
+            else:
+                os.environ['SDL_VIDEO_WINDOW_POS'] = '700,200'
             pygame.init()
             self.screen = pygame.display.set_mode((self.width, self.height))
             pygame.display.set_caption("Flappy Bird DQN")
             self.clock = pygame.time.Clock()
             self.font = pygame.font.SysFont('Arial', 30)
         
-        self.reset()
+        self.reset(0)
 
-    def reset(self):
+    def reset(self, seed):
         self.bird = Bird(50, draw_offset=self.draw_offset)
         self.pipes = []
         self.score = 0
         self.steps = 0
         self.done = False
+        self.seed = seed
+        random.seed(self.seed)
 
         self.pipes.append(self.newPipe(self.width - self.pipeSpace))
         self.pipes.append(self.newPipe(self.width))
@@ -137,8 +146,6 @@ class Environment:
     def render(self):
         if not self.renderGame:
             raise ValueError("Render is not enabled.")
-        if self.done:
-            raise ValueError("Environment is done. Please reset before rendering.")
 
         self.screen.fill((0, 0, 255))
         for pipe in self.pipes:
@@ -156,15 +163,22 @@ class Environment:
             raise ValueError("Mode must be 'human' for play method.")
         if not self.renderGame:
             raise ValueError("Render must be True for play method.")
+        
+        steps = 0
 
         while not self.done:
+            steps += 1
             self.render()
             action = 0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.done = True
+                    steps = -1
+                    break
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         action = 1
+            if not self.done:
+                state, _, _ = self.step(action)
 
-            state, _, _ = self.step(action)
+        return steps
