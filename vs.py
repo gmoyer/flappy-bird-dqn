@@ -13,10 +13,10 @@ def human_game(env):
 
 def bot_game(env, n_observations, n_actions, state, conn):
     model = DQN(n_observations, n_actions)
-    model.load_state_dict(torch.load("model2.pth"))
+    model.load_state_dict(torch.load("model4.pth"))
 
     steps = 0
-    other_steps = 0
+    other_steps = -1
 
     done = False
     while not done:

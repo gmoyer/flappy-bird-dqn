@@ -7,11 +7,11 @@ import os
 class Bird:
     def __init__(self, y, draw_offset=100):
         self.y = y
-        self.width = 50
-        self.height = 50
+        self.width = 70
+        self.height = 70
         self.x = self.width / 2
-        self.gravity = 1
-        self.jump_strength = 10
+        self.gravity = 0.6
+        self.jump_strength = 12
         self.velocity = 0
         self.draw_offset = draw_offset
 
@@ -34,14 +34,14 @@ class Bird:
         return self.getRect().colliderect(pipe.getTopRect()) or self.getRect().colliderect(pipe.getBottomRect())
     
     def getState(self):
-        return [self.x, self.y, self.velocity]
+        return [self.x, self.width, self.y, self.y + self.height, self.velocity]
 
 class Pipe:
     def __init__(self, x, height, draw_offset=100):
         self.draw_offset = draw_offset
         self.x = x
-        self.width = 80
-        self.gap = 150
+        self.width = 100
+        self.gap = 300
         self.height = height
         self.y = random.randint(50 + self.gap // 2, height - self.gap // 2 - 50)
         self.velocity = 6
@@ -66,11 +66,13 @@ class Environment:
     def __init__(self, renderGame=False, mode='train'):
         self.renderGame = renderGame
         self.mode = mode
-        self.width = 600
-        self.height = 400
-        self.pipeSpace = 200
-        self.draw_offset = 100
+        self.width = 1300
+        self.height = 800
+        self.pipeSpace = 400
+        self.pipeVelocity = 6
+        self.draw_offset = 200
         self.seed = 0
+        self.fps = 60
 
         if self.renderGame:
             if self.mode == 'human':
@@ -83,17 +85,20 @@ class Environment:
             self.clock = pygame.time.Clock()
             self.font = pygame.font.SysFont('Arial', 30)
         
-        self.reset(0)
+        self.reset()
 
-    def reset(self, seed):
-        self.bird = Bird(50, draw_offset=self.draw_offset)
+    def reset(self, seed=-1):
+        if seed != -1:
+            random.seed(self.seed)
+        self.bird = Bird(self.height/2 + random.randint(-100, 100), draw_offset=self.draw_offset)
         self.pipes = []
         self.score = 0
         self.steps = 0
         self.done = False
         self.seed = seed
-        random.seed(self.seed)
+        self.fps = 60
 
+        self.pipes.append(self.newPipe(self.width - self.pipeSpace*2))
         self.pipes.append(self.newPipe(self.width - self.pipeSpace))
         self.pipes.append(self.newPipe(self.width))
 
@@ -114,7 +119,7 @@ class Environment:
         next_pipe = upcoming_pipes[1]
         pipe_state = pipe.getState()
         next_pipe_state = next_pipe.getState()
-        return torch.tensor(bird_state + pipe_state + next_pipe_state, dtype=torch.float32)
+        return torch.tensor(bird_state + pipe_state + next_pipe_state + [self.pipeVelocity], dtype=torch.float32)
     
     def step(self, action):
         if self.done:
@@ -129,17 +134,21 @@ class Environment:
             self.done = True
 
         for pipe in self.pipes:
+            pipe.velocity = self.pipeVelocity
             pipe.update()
             if pipe.x + pipe.width < -self.draw_offset:
                 self.pipes.remove(pipe)
                 self.score += 1
             if self.bird.collide(pipe):
                 self.done = True
+        # self.pipeVelocity += 0.0005
 
         if len(self.pipes) < 2 or self.pipes[-1].x < self.width - self.pipeSpace:
             self.pipes.append(self.newPipe(self.width))
 
-        reward = 1 if not self.done else -10
+        # upcoming_pipes = [pipe for pipe in self.pipes if pipe.x + pipe.width > 0]
+        # pipe = upcoming_pipes[0]
+        reward = 1 if not self.done else -100
 
         return self.getState(), reward, self.done
     
@@ -156,7 +165,8 @@ class Environment:
         self.screen.blit(score_text, (10, 10))
 
         pygame.display.flip()
-        self.clock.tick(30)
+        self.fps += 0.1
+        self.clock.tick(self.fps)
     
     def play(self):
         if self.mode != 'human':

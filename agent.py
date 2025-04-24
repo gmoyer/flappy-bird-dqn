@@ -30,7 +30,7 @@ class Agent:
 
     def nextAction(self, state):
         if random.random() < self.epsilon:
-            return random.randint(0, self.n_actions - 1)
+            return 1 if random.random() < 0.25 else 0
         else:
             return self.policy_net.action(state)
         

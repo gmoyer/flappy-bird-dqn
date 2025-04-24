@@ -16,7 +16,7 @@ n_actions = 2
 
 
 model = DQN(n_observations, n_actions)
-model.load_state_dict(torch.load("model2.pth"))
+model.load_state_dict(torch.load("model4.pth"))
 
 done = False
 
