@@ -15,6 +15,10 @@ class Bird:
         self.velocity = 0
         self.draw_offset = draw_offset
 
+        self.bird_image = pygame.image.load("yellowbird-midflap.png")
+        aspect_ratio = self.bird_image.get_width() / self.bird_image.get_height()
+        self.bird_image = pygame.transform.scale(self.bird_image, (int(self.height * aspect_ratio), self.height))
+
     def jump(self):
         self.velocity = -self.jump_strength
 
@@ -28,7 +32,8 @@ class Bird:
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.getRect().move(self.draw_offset, 0))
+        # pygame.draw.rect(screen, (255, 0, 0), self.getRect().move(self.draw_offset, 0))
+        screen.blit(self.bird_image, (self.x + self.draw_offset - 10, self.y))
     
     def collide(self, pipe):
         return self.getRect().colliderect(pipe.getTopRect()) or self.getRect().colliderect(pipe.getBottomRect())
@@ -46,6 +51,11 @@ class Pipe:
         self.y = random.randint(50 + self.gap // 2, height - self.gap // 2 - 50)
         self.velocity = 6
 
+        self.pipe_image = pygame.image.load("pipe-green.png")
+        aspect_ratio = self.pipe_image.get_width() / self.pipe_image.get_height()
+        self.pipe_image = pygame.transform.scale(self.pipe_image, (self.width, int(self.width / aspect_ratio)))
+        self.upside_down_pipe_image = pygame.transform.flip(self.pipe_image, False, True)
+
     def update(self):
         self.x -= self.velocity
 
@@ -55,8 +65,13 @@ class Pipe:
         return pygame.Rect(self.x, self.y + self.gap // 2, self.width, self.height - self.y - self.gap // 2)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (0, 255, 0), self.getTopRect().move(self.draw_offset, 0))
-        pygame.draw.rect(screen, (0, 255, 0), self.getBottomRect().move(self.draw_offset, 0))
+        # pygame.draw.rect(screen, (0, 255, 0), self.getTopRect().move(self.draw_offset, 0))
+        # pygame.draw.rect(screen, (0, 255, 0), self.getBottomRect().move(self.draw_offset, 0))
+
+        screen.blit(self.pipe_image, (self.x + self.draw_offset, self.getBottomRect().y))
+        screen.blit(self.upside_down_pipe_image, (self.x + self.draw_offset, self.getTopRect().height - self.pipe_image.get_height()))
+
+        
 
     def getState(self):
         return [self.x, self.x + self.width, self.y, self.getTopRect().height, self.getBottomRect().y]
@@ -96,7 +111,7 @@ class Environment:
         self.steps = 0
         self.done = False
         self.seed = seed
-        self.fps = 60
+        self.fps = 70
 
         self.pipes.append(self.newPipe(self.width - self.pipeSpace*2))
         self.pipes.append(self.newPipe(self.width - self.pipeSpace))
@@ -156,7 +171,7 @@ class Environment:
         if not self.renderGame:
             raise ValueError("Render is not enabled.")
 
-        self.screen.fill((0, 0, 255))
+        self.screen.fill((78, 192, 202))
         for pipe in self.pipes:
             pipe.draw(self.screen)
         self.bird.draw(self.screen)
@@ -165,7 +180,7 @@ class Environment:
         self.screen.blit(score_text, (10, 10))
 
         pygame.display.flip()
-        self.fps += 0.1
+        self.fps += 1/self.fps
         self.clock.tick(self.fps)
     
     def play(self):
